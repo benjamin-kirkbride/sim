@@ -1,0 +1,56 @@
+[build-system]
+requires = ["setuptools", "setuptools-scm", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sim"
+version = "0.0.1"
+requires-python = ">=3.11"
+
+
+dependencies = [
+    "arcade==3.0.0.dev26"
+]
+
+[project.optional-dependencies]
+
+dev = [
+    "coverage",
+    "pytest>=7.3",
+    "pytest-sugar",
+    "mypy>=1.0.0",
+    "black",
+    "ruff",
+    "pytest-xdist",
+    "python-dotenv",
+    "pytest-cov",
+    "hypothesis",
+]
+
+[tool.ruff]
+ignore = [
+    "DJ", # flake8-django
+    "ANN", # flake8-annotations - leave these to mypy
+    "PD", # pandas-vet - we don't use pandas
+    "NPY", # NumPy-specific rules - we don't use numpy
+    "AIR", # Airflow - we don't use apache airflow
+    "S101", # Use of assert detected - I use assert for typing and testing
+    "G004", # logging-f-string - I want to use fstrings for logs, I don't care about the consequences
+    "COM812", # https://github.com/astral-sh/ruff/issues/6525
+
+]
+select = ["ALL"]
+[tool.ruff.pydocstyle]
+# Use Google-style docstrings.
+convention = "google"
+
+[tool.mypy]
+python_version = "3.11"
+check_untyped_defs = true
+ignore_missing_imports = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+warn_unused_configs = true
+
+[tool.setuptools]
+packages = ["app"]

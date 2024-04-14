@@ -1,0 +1,10 @@
+#!/bin/bash
+
+NAME="devcontainer"
+
+container_id=$(docker ps --filter "name=${NAME}" --format "{{.ID}}")
+if [ -n "$container_id" ]; then
+    docker exec -it -u vscode "$container_id" /bin/bash
+else
+    echo "${devcontainer} not found. Make sure it's running."
+fi

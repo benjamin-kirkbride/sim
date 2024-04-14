@@ -1,0 +1,30 @@
+#!/bin/bash
+
+user=root
+command=("/bin/bash")
+
+connect_to_container() {
+    NAME="$1"
+
+    container_id=$(docker ps --filter "name=${NAME}" --format "{{.ID}}")
+    if [ -n "$container_id" ]; then
+        docker exec -it -u "$user" "$container_id" "${command[@]}"
+    else
+        echo "Container '${NAME}' not found. Make sure it's running."
+    fi
+}
+
+main() {
+    if [ "$#" -ne 1 ]; then
+        echo "Error: Exactly one argument is required."
+        echo "Usage: $0 CONTAINER_NAME"
+        exit 1
+    fi
+
+    connect_to_container "$1"
+}
+
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    main "$@"
+fi

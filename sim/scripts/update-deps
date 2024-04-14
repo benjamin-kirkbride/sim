@@ -1,0 +1,20 @@
+#!/bin/bash
+
+set -o errexit
+set -o pipefail
+set -o nounset
+
+# move to project root
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd $script_dir/..
+
+pip-compile \
+--resolver=backtracking \
+-o retrieval/docker/requirements.prod.txt \
+social/pyproject.toml
+
+pip-compile \
+--resolver=backtracking \
+--all-extras \
+-o retrieval/docker/requirements.dev.txt \
+social/pyproject.toml

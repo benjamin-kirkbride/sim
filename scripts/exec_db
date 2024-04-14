@@ -1,0 +1,11 @@
+#!/bin/bash
+
+set -o nounset
+
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+source "$script_dir"/exec
+
+user=postgres
+command=("/usr/bin/psql" "--pset" "expanded=auto" "-U" "super" "retrieve")
+connect_to_container retrieve-postgres
