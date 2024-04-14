@@ -2,7 +2,7 @@ from contextlib import nullcontext as does_not_raise
 from typing import NamedTuple
 
 import pytest
-from app import util
+from sim.app import util
 from hypothesis import given
 from hypothesis.strategies import text
 

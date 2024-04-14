@@ -1,0 +1,46 @@
+{
+    "Map/SizeTest": {
+        "height": 4300,
+        "width": 2
+    },
+    "activeFile": "hexagonAll_sheet.tsj",
+    "expandedProjectPaths": [
+        "."
+    ],
+    "fileStates": {
+        "4corners.tmj": {
+            "scale": 0.19119309262166403,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 1825.3797520321868,
+                "y": 2332.7202561786685
+            }
+        },
+        "hexagonAll_sheet.tsj": {
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        }
+    },
+    "last.imagePath": "/home/bkirkbride/projects/sim/assets/kenney_hexagon-pack/Spritesheets",
+    "map.height": 30,
+    "map.lastUsedFormat": "json",
+    "map.orientation": null,
+    "map.tileHeight": 140,
+    "map.tileWidth": 120,
+    "openFiles": [
+        "4corners.tmj",
+        "hexagonAll_sheet.tsj"
+    ],
+    "project": "test.tiled-project",
+    "recentFiles": [
+        "4corners.tmj",
+        "hexagonAll_sheet.tsj"
+    ],
+    "tileset.lastUsedFormat": "json",
+    "tileset.margin": 0,
+    "tileset.spacing": 2,
+    "tileset.tileSize": {
+        "height": 140,
+        "width": 120
+    }
+}

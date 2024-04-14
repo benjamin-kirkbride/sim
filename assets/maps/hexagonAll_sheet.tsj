@@ -1,0 +1,14 @@
+{ "columns":16,
+ "image":"..\/kenney_hexagon-pack\/Spritesheets\/hexagonAll_sheet.png",
+ "imageheight":2048,
+ "imagewidth":2048,
+ "margin":0,
+ "name":"hexagonAll_sheet",
+ "spacing":2,
+ "tilecount":224,
+ "tiledversion":"1.9.2",
+ "tileheight":140,
+ "tilewidth":120,
+ "type":"tileset",
+ "version":"1.9"
+}
