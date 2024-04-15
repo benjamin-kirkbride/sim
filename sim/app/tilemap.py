@@ -771,8 +771,12 @@ class TileMap:
             # Can never be None because we already detect and reject infinite maps
             assert map_array
 
+        # FIXME: get tile size from tileset
+        # FIXME: why does the tile size need to be divided by 2?
+        # FIXME: why is the tile size 140^2 and not 140x120?
+        # FIXME: why is there a black outline? (too big?)
         hex_layout = hex_lib.Layout(
-            hex_lib.layout_pointy, hex_lib.Point(120 / 2, 140 / 2), hex_lib.Point(0, 0)
+            hex_lib.layout_pointy, hex_lib.Point(140 / 2, 140 / 2), hex_lib.Point(0, 0)
         )
 
         # Loop through the layer and add in the list
@@ -805,7 +809,7 @@ class TileMap:
                         f"Warning: Could not create sprite number {item} in layer '{layer.name}' {tile.image}"
                     )
                 else:
-
+                    # FIXME: handle map scaling
                     # Convert from odd-r offset to cube coordinates
                     offset_coord = hex_lib.OffsetCoord(column_index, row_index)
                     hex_pos = hex_lib.roffset_to_cube(

@@ -3,6 +3,7 @@
 from pathlib import Path
 import arcade
 from app.tilemap import load_tilemap
+from operator import add
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 ASSETS = PROJECT_ROOT / "assets"
@@ -45,11 +46,7 @@ class MyGame(arcade.Window):
         # A variable to store our gui camera object
         self.gui_camera = None
 
-        # This variable will store our score as an integer.
-        self.score = 0
-
-        # This variable will store the text for score that we will draw to the screen.
-        self.score_text = None
+        self.mouse_pan = False
 
     def setup(self):
         """Set up the game here. Call this function to restart the game."""
@@ -74,10 +71,10 @@ class MyGame(arcade.Window):
 
         # Initialize our camera, setting a viewport the size of our window.
         self.camera = arcade.camera.Camera2D()
-        self.camera.zoom = 0.1
+        self.camera.zoom = 0.5
 
         # Initialize our gui camera, initial settings are the same as our world camera.
-        self.gui_camera = arcade.camera.Camera2D()
+        # self.gui_camera = arcade.camera.Camera2D()
 
     def on_draw(self):
         """Render the screen."""
@@ -92,19 +89,50 @@ class MyGame(arcade.Window):
         self.scene.draw()
 
         # Activate our GUI camera
-        self.gui_camera.use()
+        # self.gui_camera.use()
 
     def on_update(self, delta_time):
         """Movement and Game Logic"""
 
+        self.camera.position = self.camera.position + (1, 1)
+
         # # Center our camera on the player
         # self.camera.center(self.player_sprite.position)
+
+    def on_mouse_press(self, x: float, y: float, button: int, key_modifiers: int):
+        """Called when the user presses a mouse button."""
+        if button == arcade.MOUSE_BUTTON_MIDDLE:
+            self.mouse_pan = True
+
+        print(button)
+
+    def on_mouse_release(self, x: float, y: float, button: int, modifiers: int):
+        """Called when a user releases a mouse button."""
+        if button == arcade.MOUSE_BUTTON_MIDDLE:
+            self.mouse_pan = False
+
+    def on_mouse_motion(self, x, y, dx, dy):
+        """Called whenever the mouse moves."""
+        if self.mouse_pan:
+            self.camera.position = tuple(
+                map(
+                    add,
+                    self.camera.position,
+                    (-dx * 1 / self.camera.zoom, -dy * 1 / self.camera.zoom),
+                )
+            )
+
+    def on_mouse_scroll(self, x, y, scroll_x, scroll_y):
+        """Called whenever the mouse scrolls."""
+        # FIXME: zoom to mouse position
+        # FIXME: zoom steps need to be more smooth
+        self.camera.zoom += scroll_y * 0.1
 
     def on_key_press(self, key, modifiers):
         """Called whenever a key is pressed."""
 
         if key == arcade.key.ESCAPE:
-            self.setup()
+            self.close()
 
     def on_key_release(self, key, modifiers):
         """Called whenever a key is released."""
