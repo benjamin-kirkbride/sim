@@ -1,22 +1,23 @@
 # Generated code -- CC0 -- No Rights Reserved -- http://www.redblobgames.com/grids/hexagons/
 
-from __future__ import division
-from __future__ import print_function
+
 import collections
 import math
-
 
 Point = collections.namedtuple("Point", ["x", "y"])
 
 
+# FIXME: use a class instead of a namedtuple
 _Hex = collections.namedtuple("Hex", ["q", "r", "s"])
 
 
 def Hex(q, r, s):
-    assert not (round(q + r + s) != 0), "q + r + s must be 0"
+    """Construct a hexagon from q, r, s coordinates. The sum of q, r, s must be 0."""
+    assert round(q + r + s) == 0, "q + r + s must be 0"
     return _Hex(q, r, s)
 
 
+# FIXME: use operators instead of functions on Hex class
 def hex_add(a, b):
     return Hex(a.q + b.q, a.r + b.r, a.s + b.s)
 
@@ -129,7 +130,7 @@ def qoffset_to_cube(offset, h):
     q = h.col
     r = h.row - (h.col + offset * (h.col & 1)) // 2
     s = -q - r
-    if offset != EVEN and offset != ODD:
+    if offset not in (EVEN, ODD):
         raise ValueError("offset must be EVEN (+1) or ODD (-1)")
     return Hex(q, r, s)
 
@@ -137,7 +138,7 @@ def qoffset_to_cube(offset, h):
 def roffset_from_cube(offset, h):
     col = h.q + (h.r + offset * (h.r & 1)) // 2
     row = h.r
-    if offset != EVEN and offset != ODD:
+    if offset not in (EVEN, ODD):
         raise ValueError("offset must be EVEN (+1) or ODD (-1)")
     return OffsetCoord(col, row)
 
@@ -146,7 +147,7 @@ def roffset_to_cube(offset, h):
     q = h.col - (h.row + offset * (h.row & 1)) // 2
     r = h.row
     s = -q - r
-    if offset != EVEN and offset != ODD:
+    if offset not in (EVEN, ODD):
         raise ValueError("offset must be EVEN (+1) or ODD (-1)")
     return Hex(q, r, s)
 
@@ -212,6 +213,7 @@ layout_flat = Orientation(
 
 
 def hex_to_pixel(layout, h):
+    """Convert axial hexagon coordinates to pixel coordinates."""
     M = layout.orientation
     size = layout.size
     origin = layout.origin
@@ -221,6 +223,7 @@ def hex_to_pixel(layout, h):
 
 
 def pixel_to_hex(layout, p):
+    """Convert pixel coordinates to cubic hexagon coordinates."""
     M = layout.orientation
     size = layout.size
     origin = layout.origin
