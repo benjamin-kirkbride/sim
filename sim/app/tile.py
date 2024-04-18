@@ -1,8 +1,7 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import arcade
 from sim.app import hexagon
-from sim.app.config import HEX_LAYOUT
 
 
 @dataclass(frozen=True)
@@ -49,6 +48,10 @@ def create_tile(hex_: hexagon.Hex, sprite: arcade.Sprite) -> Tile:
         case "house":
             traversable = True
             traversal_cost = 1
+
+        case "food":
+            traversable = True
+            traversal_cost = 7  # thorns
 
     return Tile(
         hex=hex_,

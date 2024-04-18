@@ -19,6 +19,14 @@
         "hexagonAll_sheet.tsj": {
             "scaleInDock": 1,
             "scaleInEditor": 1
+        },
+        "hexagonBuildings_sheet.tsj": {
+            "scaleInDock": 1,
+            "scaleInEditor": 0.75
+        },
+        "hexagonTerrain_sheet.tsj": {
+            "scaleInDock": 1,
+            "scaleInEditor": 0.75
         }
     },
     "last.imagePath": "/home/bkirkbride/projects/sim/assets/kenney_hexagon-pack/Spritesheets",
@@ -32,7 +40,10 @@
         "hexagonAll_sheet.tsj"
     ],
     "project": "test.tiled-project",
+    "property.type": "bool",
     "recentFiles": [
+        "hexagonBuildings_sheet.tsj",
+        "hexagonTerrain_sheet.tsj",
         "4corners.tmj",
         "hexagonAll_sheet.tsj"
     ],

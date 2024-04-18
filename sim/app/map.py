@@ -10,12 +10,6 @@ from app.config import HEX_LAYOUT, MAP
 from app.tilemap import load_tilemap
 
 
-@dataclass(order=True)
-class PrioritizedItem:
-    priority: int
-    tile: Tile = field(compare=False)
-
-
 class HexTileMapGraph:
     """A simple graph."""
 
@@ -40,10 +34,12 @@ class HexTileMapGraph:
 
     def cost(self, a: Tile, b: Tile) -> int:
         """Get the cost of moving from one node to another."""
-        return 1
+        return b.traversal_cost
 
 
-def breadth_first_search(graph: HexTileMapGraph, start: Tile, goal: Tile | None = None):
+def breadth_first_search(
+    graph: HexTileMapGraph, start: Tile, goal: Tile | None = None
+) -> dict[Tile, Tile | None]:
     frontier: Queue[Tile] = Queue()
     frontier.put(start)
     came_from: dict[Tile, Tile | None] = {}
@@ -61,6 +57,84 @@ def breadth_first_search(graph: HexTileMapGraph, start: Tile, goal: Tile | None 
                 came_from[tile] = current
 
     return came_from
+
+
+@dataclass(order=True, frozen=True)
+class PrioritizedTile:
+    """A tile with a priority."""
+
+    priority: int
+    tile: Tile = field(compare=False)
+
+
+def dijkstra_search(
+    graph: HexTileMapGraph, start: Tile, goal: Tile
+) -> tuple[dict[Tile, Tile | None], dict[Tile, float]]:
+    """Dijkstra's algorithm."""
+    frontier: PriorityQueue[PrioritizedTile] = PriorityQueue()
+    frontier.put(PrioritizedTile(0, start))
+    came_from: dict[Tile, Tile | None] = {}
+    cost_so_far: dict[Tile, float] = {}
+    came_from[start] = None
+    cost_so_far[start] = 0
+
+    while not frontier.empty():
+        current: Tile = frontier.get().tile
+
+        if current == goal:
+            break
+
+        for tile in graph.neighbors(current):
+            new_cost = cost_so_far[current] + graph.cost(current, tile)
+            if tile not in cost_so_far or new_cost < cost_so_far[tile]:
+                cost_so_far[tile] = new_cost
+                priority = new_cost
+                frontier.put(PrioritizedTile(priority, tile))
+                came_from[tile] = current
+
+    return came_from, cost_so_far
+
+
+def a_star_search(graph: HexTileMapGraph, start: Tile, goal: Tile):
+    """A* search."""
+    frontier: PriorityQueue[PrioritizedTile] = PriorityQueue()
+    frontier.put(PrioritizedTile(0, start))
+    came_from: dict[Tile, Tile | None] = {}
+    cost_so_far: dict[Tile, float] = {}
+    came_from[start] = None
+    cost_so_far[start] = 0
+
+    while not frontier.empty():
+        current: Tile = frontier.get().tile
+
+        if current == goal:
+            break
+
+        for tile in graph.neighbors(current):
+            new_cost = cost_so_far[current] + graph.cost(current, tile)
+            if tile not in cost_so_far or new_cost < cost_so_far[tile]:
+                cost_so_far[tile] = new_cost
+                priority = new_cost + tile.hex.distance_to(goal.hex)
+                frontier.put(PrioritizedTile(priority, tile))
+                came_from[tile] = current
+
+    return came_from, cost_so_far
+
+
+def reconstruct_path(
+    came_from: dict[Tile, Tile], start: Tile, goal: Tile
+) -> list[Tile]:
+    """Reconstruct the path from start to goal."""
+    current: Tile = goal
+    path: list[Tile] = []
+    if goal not in came_from:  # no path was found
+        return []
+    while current != start:
+        path.append(current)
+        current = came_from[current]
+    path.append(start)  # optional
+    path.reverse()  # optional
+    return path
 
 
 class Map(arcade.Section):
@@ -105,6 +179,7 @@ class Map(arcade.Section):
         self.tile_map = load_tilemap(
             MAP,
             hex_layout=HEX_LAYOUT,
+            use_spatial_hash=True,
         )
 
         self.tiles = self.tile_map.hex_tiles
@@ -130,23 +205,12 @@ class Map(arcade.Section):
 
         if self.updated_point:
             if self.point_a and self.point_b:
-                came_from = breadth_first_search(self.graph, self.point_a, self.point_b)
+                came_from, _ = a_star_search(self.graph, self.point_a, self.point_b)
                 reached = [tile.hex for tile in came_from if tile is not None]
                 path: list[Tile] = []
 
-                current = self.point_b
-                success = True
-                while current != self.point_a:
-                    if current is None:
-                        success = False
-                        break
-                    path.append(current)
-                    current = came_from.get(current)
-
-                if success:
-                    self.white_highlighted_tiles = [tile.hex for tile in path]
-                else:
-                    self.white_highlighted_tiles = []
+                path = reconstruct_path(came_from, self.point_a, self.point_b)
+                self.white_highlighted_tiles = [tile.hex for tile in path]
 
             elif self.point_a:
                 # highlight all tiles that can be reached from point_a
