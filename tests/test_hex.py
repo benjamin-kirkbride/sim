@@ -1,39 +1,16 @@
-from sim.app.hex_lib import (
-    hex_add,
-    hex_subtract,
-    hex_direction,
-    hex_neighbor,
-    hex_diagonal_neighbor,
-    hex_distance,
-    hex_rotate_right,
-    hex_rotate_left,
-    hex_round,
-    hex_lerp,
-    hex_linedraw,
-    Layout,
-    Point,
-    hex_to_pixel,
-    pixel_to_hex,
-    qoffset_from_cube,
-    qoffset_to_cube,
-    roffset_from_cube,
-    roffset_to_cube,
-    qdoubled_from_cube,
-    qdoubled_to_cube,
-    rdoubled_from_cube,
-    rdoubled_to_cube,
-    EVEN,
-    ODD,
-    OffsetCoord,
-    DoubledCoord,
+from sim.app.hexagon import (
     Hex,
-    layout_flat,
-    layout_pointy,
+    Layout,
+    OffsetCoord,
+    Point,
+    flat_orientation,
+    hex_to_pixel,
+    line,
+    pixel_to_hex,
+    pointy_orientation,
 )
 
-
-def equal_hex(name, a, b):
-    assert a.q == b.q and a.s == b.s and a.r == b.r
+# TODO: hypothesis testing
 
 
 def equal_offsetcoord(name, a, b):
@@ -48,194 +25,149 @@ def equal_int(name, a, b):
     assert a == b
 
 
-def equal_hex_array(name, a, b):
-    equal_int(name, len(a), len(b))
-    for i in range(0, len(a)):
-        equal_hex(name, a[i], b[i])
+def test_hex_equality():
+    assert Hex(3, 4, -7) == Hex(3, 4, -7)
+    assert Hex(3, 4, -7) != Hex(3, 3, -6)
+    assert Hex(3, 4, -7) != Hex(0, 0, 0)
+    assert Hex(3, 4, -7) != Hex(4, -7, 3)
+
+
+def test_hex_pixel_roundtrip():
+    flat = Layout(flat_orientation, Point(10.0, 15.0), Point(35.0, 71.0))
+    pointy = Layout(pointy_orientation, Point(10.0, 15.0), Point(35.0, 71.0))
+
+    h = Hex(3, 4, -7)
+    assert h == round(pixel_to_hex(hex_to_pixel(h, flat), flat))
+    assert h == round(pixel_to_hex(hex_to_pixel(h, pointy), pointy))
+
+
+def test_list_of_hexes():
+    [
+        Hex(0, 0, 0),
+        Hex(0, -1, 1),
+        Hex(0, -2, 2),
+    ] == [
+        Hex(0, 0, 0),
+        Hex(0, -1, 1),
+        Hex(0, -2, 2),
+    ]
+
+    [Hex(0, 0, 0), Hex(0, -1, 1)] != [Hex(0, 0, 0)]
+
+    [Hex(0, 0, 0), Hex(0, -1, 1)] != [Hex(0, -1, 1)]
+
+    [Hex(0, 0, 0), Hex(0, -1, 1)] != [Hex(0, -1, 1), Hex(0, 0, 0)]
+
+    Hex(0, 0, 0) in [Hex(0, 0, 0), Hex(0, -1, 1)]
+
+    Hex(0, 0, 0) not in [Hex(0, -1, 1), Hex(0, -2, 2)]
 
 
 def test_hex_arithmetic():
-    equal_hex("hex_add", Hex(4, -10, 6), hex_add(Hex(1, -3, 2), Hex(3, -7, 4)))
-    equal_hex(
-        "hex_subtract", Hex(-2, 4, -2), hex_subtract(Hex(1, -3, 2), Hex(3, -7, 4))
-    )
+    Hex(4, -10, 6) == Hex(1, -3, 2) + Hex(3, -7, 4)
+    Hex(-2, 4, -2) == Hex(1, -3, 2) - Hex(3, -7, 4)
 
 
 def test_hex_direction():
-    equal_hex("hex_direction", Hex(0, -1, 1), hex_direction(2))
+    Hex(0, -1, 1) == Hex.direction(2)
 
 
 def test_hex_neighbor():
-    equal_hex("hex_neighbor", Hex(1, -3, 2), hex_neighbor(Hex(1, -2, 1), 2))
+    Hex(1, -3, 2) == Hex(1, -2, 1).neighbor(2)
 
 
 def test_hex_diagonal():
-    equal_hex("hex_diagonal", Hex(-1, -1, 2), hex_diagonal_neighbor(Hex(1, -2, 1), 3))
+    Hex(-1, -1, 2) == Hex(1, -2, 1).diagonal_neighbor(3)
 
 
 def test_hex_distance():
-    equal_int("hex_distance", 7, hex_distance(Hex(3, -7, 4), Hex(0, 0, 0)))
+    7 == Hex(3, -7, 4).distance_to(Hex(0, 0, 0))
 
 
 def test_hex_rotate_right():
-    equal_hex("hex_rotate_right", hex_rotate_right(Hex(1, -3, 2)), Hex(3, -2, -1))
+    Hex(1, -3, 2).rotate_right() == Hex(3, -2, -1)
 
 
 def test_hex_rotate_left():
-    equal_hex("hex_rotate_left", hex_rotate_left(Hex(1, -3, 2)), Hex(-2, -1, 3))
+    Hex(1, -3, 2).rotate_left() == Hex(-2, -1, 3)
 
 
 def test_hex_round():
     a = Hex(0.0, 0.0, 0.0)
     b = Hex(1.0, -1.0, 0.0)
     c = Hex(0.0, -1.0, 1.0)
-    equal_hex(
-        "hex_round 1",
-        Hex(5, -10, 5),
-        hex_round(hex_lerp(Hex(0.0, 0.0, 0.0), Hex(10.0, -20.0, 10.0), 0.5)),
+    Hex(5, -10, 5) == round(
+        Hex(0.0, 0.0, 0.0).lerp_between(Hex(10.0, -20.0, 10.0), 0.5)
     )
-    equal_hex("hex_round 2", hex_round(a), hex_round(hex_lerp(a, b, 0.499)))
-    equal_hex("hex_round 3", hex_round(b), hex_round(hex_lerp(a, b, 0.501)))
-    equal_hex(
-        "hex_round 4",
-        hex_round(a),
-        hex_round(
-            Hex(
-                a.q * 0.4 + b.q * 0.3 + c.q * 0.3,
-                a.r * 0.4 + b.r * 0.3 + c.r * 0.3,
-                a.s * 0.4 + b.s * 0.3 + c.s * 0.3,
-            )
-        ),
+    round(a) == round(a.lerp_between(b, 0.499))
+    round(b) == round(a.lerp_between(b, 0.501))
+
+    round(a) == round(
+        Hex(
+            a.q * 0.4 + b.q * 0.3 + c.q * 0.3,
+            a.r * 0.4 + b.r * 0.3 + c.r * 0.3,
+            a.s * 0.4 + b.s * 0.3 + c.s * 0.3,
+        )
     )
-    equal_hex(
-        "hex_round 5",
-        hex_round(c),
-        hex_round(
-            Hex(
-                a.q * 0.3 + b.q * 0.3 + c.q * 0.4,
-                a.r * 0.3 + b.r * 0.3 + c.r * 0.4,
-                a.s * 0.3 + b.s * 0.3 + c.s * 0.4,
-            )
-        ),
+
+    round(c) == round(
+        Hex(
+            a.q * 0.3 + b.q * 0.3 + c.q * 0.4,
+            a.r * 0.3 + b.r * 0.3 + c.r * 0.4,
+            a.s * 0.3 + b.s * 0.3 + c.s * 0.4,
+        )
     )
 
 
 def test_hex_linedraw():
-    equal_hex_array(
-        "hex_linedraw",
-        [
-            Hex(0, 0, 0),
-            Hex(0, -1, 1),
-            Hex(0, -2, 2),
-            Hex(1, -3, 2),
-            Hex(1, -4, 3),
-            Hex(1, -5, 4),
-        ],
-        hex_linedraw(Hex(0, 0, 0), Hex(1, -5, 4)),
-    )
+    [
+        Hex(0, 0, 0),
+        Hex(0, -1, 1),
+        Hex(0, -2, 2),
+        Hex(1, -3, 2),
+        Hex(1, -4, 3),
+        Hex(1, -5, 4),
+    ] == line(Hex(0, 0, 0), Hex(1, -5, 4)),
 
 
 def test_layout():
     h = Hex(3, 4, -7)
-    flat = Layout(layout_flat, Point(10.0, 15.0), Point(35.0, 71.0))
-    equal_hex("layout", h, hex_round(pixel_to_hex(flat, hex_to_pixel(flat, h))))
-    pointy = Layout(layout_pointy, Point(10.0, 15.0), Point(35.0, 71.0))
-    equal_hex("layout", h, hex_round(pixel_to_hex(pointy, hex_to_pixel(pointy, h))))
+    flat = Layout(flat_orientation, Point(10.0, 15.0), Point(35.0, 71.0))
+
+    h == round(pixel_to_hex(hex_to_pixel(h, flat), flat))
+
+    pointy = Layout(pointy_orientation, Point(10.0, 15.0), Point(35.0, 71.0))
+    h == round(pixel_to_hex(hex_to_pixel(h, pointy), pointy))
 
 
 def test_offset_roundtrip():
     a = Hex(3, 4, -7)
     b = OffsetCoord(1, -3)
-    equal_hex(
-        "conversion_roundtrip even-q",
-        a,
-        qoffset_to_cube(EVEN, qoffset_from_cube(EVEN, a)),
-    )
-    equal_offsetcoord(
-        "conversion_roundtrip even-q",
-        b,
-        qoffset_from_cube(EVEN, qoffset_to_cube(EVEN, b)),
-    )
-    equal_hex(
-        "conversion_roundtrip odd-q", a, qoffset_to_cube(ODD, qoffset_from_cube(ODD, a))
-    )
-    equal_offsetcoord(
-        "conversion_roundtrip odd-q", b, qoffset_from_cube(ODD, qoffset_to_cube(ODD, b))
-    )
-    equal_hex(
-        "conversion_roundtrip even-r",
-        a,
-        roffset_to_cube(EVEN, roffset_from_cube(EVEN, a)),
-    )
-    equal_offsetcoord(
-        "conversion_roundtrip even-r",
-        b,
-        roffset_from_cube(EVEN, roffset_to_cube(EVEN, b)),
-    )
-    equal_hex(
-        "conversion_roundtrip odd-r", a, roffset_to_cube(ODD, roffset_from_cube(ODD, a))
-    )
-    equal_offsetcoord(
-        "conversion_roundtrip odd-r", b, roffset_from_cube(ODD, roffset_to_cube(ODD, b))
-    )
+
+    a == a.to_offset("even-q").to_cube("even-q")
+
+    b == b.to_cube("even-q").to_offset("even-q")
+
+    a == a.to_offset("odd-q").to_cube("odd-q")
+
+    b == b.to_cube("odd-q").to_offset("odd-q")
+
+    a == a.to_offset("even-r").to_cube("even-r")
+
+    b == b.to_cube("even-r").to_offset("even-r")
+
+    a == a.to_offset("odd-r").to_cube("odd-r")
+
+    b == b.to_cube("odd-r").to_offset("odd-r")
 
 
 def test_offset_from_cube():
-    equal_offsetcoord(
-        "offset_from_cube even-q",
-        OffsetCoord(1, 3),
-        qoffset_from_cube(EVEN, Hex(1, 2, -3)),
-    )
-    equal_offsetcoord(
-        "offset_from_cube odd-q",
-        OffsetCoord(1, 2),
-        qoffset_from_cube(ODD, Hex(1, 2, -3)),
-    )
+    OffsetCoord(1, 3) == Hex(1, 2, -3).to_offset("even-q")
+
+    OffsetCoord(1, 2) == Hex(1, 2, -3).to_offset("odd-q")
 
 
 def test_offset_to_cube():
-    equal_hex(
-        "offset_to_cube even-", Hex(1, 2, -3), qoffset_to_cube(EVEN, OffsetCoord(1, 3))
-    )
-    equal_hex(
-        "offset_to_cube odd-q", Hex(1, 2, -3), qoffset_to_cube(ODD, OffsetCoord(1, 2))
-    )
+    Hex(1, 2, -3) == OffsetCoord(1, 3).to_cube("even-q")
 
-
-def test_doubled_roundtrip():
-    a = Hex(3, 4, -7)
-    b = DoubledCoord(1, -3)
-    equal_hex(
-        "conversion_roundtrip doubled-q", a, qdoubled_to_cube(qdoubled_from_cube(a))
-    )
-    equal_doubledcoord(
-        "conversion_roundtrip doubled-q", b, qdoubled_from_cube(qdoubled_to_cube(b))
-    )
-    equal_hex(
-        "conversion_roundtrip doubled-r", a, rdoubled_to_cube(rdoubled_from_cube(a))
-    )
-    equal_doubledcoord(
-        "conversion_roundtrip doubled-r", b, rdoubled_from_cube(rdoubled_to_cube(b))
-    )
-
-
-def test_doubled_from_cube():
-    equal_doubledcoord(
-        "doubled_from_cube doubled-q",
-        DoubledCoord(1, 5),
-        qdoubled_from_cube(Hex(1, 2, -3)),
-    )
-    equal_doubledcoord(
-        "doubled_from_cube doubled-r",
-        DoubledCoord(4, 2),
-        rdoubled_from_cube(Hex(1, 2, -3)),
-    )
-
-
-def test_doubled_to_cube():
-    equal_hex(
-        "doubled_to_cube doubled-q", Hex(1, 2, -3), qdoubled_to_cube(DoubledCoord(1, 5))
-    )
-    equal_hex(
-        "doubled_to_cube doubled-r", Hex(1, 2, -3), rdoubled_to_cube(DoubledCoord(4, 2))
-    )
+    Hex(1, 2, -3) == OffsetCoord(1, 2).to_cube("odd-q")

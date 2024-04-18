@@ -37,6 +37,7 @@ class GameView(arcade.View):
         self.map.setup()
 
     def on_draw(self):
+        """Draw everything."""
         arcade.start_render()
 
 

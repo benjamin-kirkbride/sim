@@ -25,7 +25,8 @@ dev = [
     "python-dotenv",
     "pytest-cov",
     "hypothesis",
-    "pudb"
+    "pudb",
+    "snakeviz",
 ]
 
 [tool.ruff]

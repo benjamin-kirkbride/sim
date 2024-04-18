@@ -23,6 +23,7 @@
     "rdoubled",
     "roffset",
     "scipy",
+    "spritelist",
     "tilemap",
     "tileset",
     "tqdm",

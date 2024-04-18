@@ -33,6 +33,7 @@ from arcade import (
 from arcade.hitbox import HitBoxAlgorithm, RotatableHitBox
 from arcade.texture.loading import _load_tilemap_texture
 from pytiled_parser import Color
+from sim.app.tile import Tile, create_tile
 
 if TYPE_CHECKING:
     from arcade import Texture, TextureAtlas
@@ -41,8 +42,7 @@ from arcade.math import rotate_point
 from arcade.resources import resolve
 from arcade.types import Point, Rect, TiledObject
 from pyglet.math import Vec2
-
-from app import hex_lib
+from sim.app import hexagon
 
 _FLIPPED_HORIZONTALLY_FLAG = 0x80000000
 _FLIPPED_VERTICALLY_FLAG = 0x40000000
@@ -103,7 +103,6 @@ def _get_image_source(
             return try2
 
     print(f"Warning, can't find image {image_file} for tile {tile.id}")
-    breakpoint()
     return None
 
 
@@ -207,7 +206,7 @@ class TileMap:
 
     def __init__(
         self,
-        hex_layout: hex_lib.Layout,
+        hex_layout: hexagon.Layout,
         map_file: str | Path = "",
         scaling: float = 1.0,
         layer_options: dict[str, dict[str, Any]] | None = None,
@@ -246,6 +245,7 @@ class TileMap:
                 pass
 
         self.hex_layout = hex_layout
+        self.hex_tiles: dict[hexagon.Hex, Tile] = {}
         self._lazy = lazy
 
         # Set Map Attributes
@@ -455,7 +455,6 @@ class TileMap:
                     Custom classes for animated tiles must subclass TextureAnimationSprite.
                     """
                 )
-            # print(custom_class.__name__)
             args = {"path_or_texture": image_file, "scale": scaling}
             my_sprite = custom_class(**custom_class_args, **args)  # type: ignore
         else:
@@ -768,7 +767,7 @@ class TileMap:
         # FIXME: why is there a black outline? (too big?)
 
         # Loop through the layer and add in the list
-        for row_index, row in enumerate(map_array):
+        for row_index, row in enumerate(reversed(map_array)):
             for column_index, item in enumerate(row):
                 # Check for an empty tile
                 if item == 0:
@@ -797,15 +796,15 @@ class TileMap:
                 else:
                     # FIXME: handle map scaling
                     # Convert from odd-r offset to cube coordinates
-                    offset_coord = hex_lib.OffsetCoord(column_index, row_index)
-                    hex_pos = hex_lib.roffset_to_cube(
-                        hex_lib.ODD, offset_coord
-                    )  # ODD because it's an odd-r layout
+                    offset_coord = hexagon.OffsetCoord(column_index, row_index)
+                    hex_ = offset_coord.to_cube("even-r")
 
                     # Convert hex position to pixel position
-                    pixel_pos = hex_lib.hex_to_pixel(self.hex_layout, hex_pos)
+                    pixel_pos = hex_.to_pixel(self.hex_layout)
+                    # FIXME: why is the y position negative?
+                    pixel_pos = hexagon.Point(pixel_pos.x, pixel_pos.y)
                     my_sprite.center_x = pixel_pos.x
-                    my_sprite.center_y = -pixel_pos.y
+                    my_sprite.center_y = pixel_pos.y
 
                     # Tint
                     if layer.tint_color:
@@ -815,6 +814,8 @@ class TileMap:
                     opacity = layer.opacity
                     if opacity:
                         my_sprite.alpha = int(opacity * 255)
+
+                    self.hex_tiles[hex_] = create_tile(hex_=hex_, sprite=my_sprite)
 
                     sprite_list.visible = layer.visible
                     sprite_list.append(my_sprite)
@@ -1031,7 +1032,7 @@ class TileMap:
 
 def load_tilemap(
     map_file: str | Path,
-    hex_layout: hex_lib.Layout,
+    hex_layout: hexagon.Layout,
     scaling: float = 1.0,
     layer_options: dict[str, dict[str, Any]] | None = None,
     use_spatial_hash: bool = False,
