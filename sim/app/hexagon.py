@@ -1,7 +1,13 @@
-# Generated code -- CC0 -- No Rights Reserved -- http://www.redblobgames.com/grids/hexagons/
+"""Hexagon utilities.
 
+This module started as the Python implementation of the hexagon utilities
+from Red Blob Games.
 
-import collections
+See: https://www.redblobgames.com/grids/hexagons/
+
+CC0 -- No Rights Reserved
+"""
+
 import math
 from dataclasses import dataclass
 from math import isclose
@@ -82,16 +88,18 @@ class Hex:
     r: float
     s: float
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Create a hexagon in cube coordinates."""
         cube_sum = self.q + self.r + self.s
         assert isclose(
             0, cube_sum, abs_tol=1e-14
-        ), f"q + r + s must be 0, is {cube_sum}"  # noqa: PLR2004
+        ), f"q + r + s must be 0, is {cube_sum}"
 
     def __eq__(self, other: object) -> bool:
         """Check if two hexagons are equal."""
-        return self.q == other.q and self.r == other.r and self.s == other.s  # type: ignore
+        result = self.q == other.q and self.r == other.r and self.s == other.s  # type: ignore[attr-defined]
+        assert isinstance(result, bool)
+        return result
 
     def __add__(self, other: "Hex") -> "Hex":
         """Add two hexagons."""
@@ -197,7 +205,8 @@ class Hex:
         if system == "even-q":
             return qoffset_from_cube(self, _EVEN)
 
-        raise ValueError("system must be odd-r, even-r, odd-q, or even-q")
+        msg = "system must be odd-r, even-r, odd-q, or even-q"
+        raise ValueError(msg)
 
 
 def lerp(a: Hex, b: Hex, t: float) -> Hex:
@@ -292,43 +301,51 @@ class OffsetCoord:
         if system == "even-q":
             return qoffset_to_cube(self, _EVEN)
 
-        raise ValueError("system must be EVEN (+1) or ODD (-1)")
+        msg = "system must be EVEN (+1) or ODD (-1)"
+        raise ValueError(msg)
 
 
 def qoffset_from_cube(h: Hex, offset: Literal[-1, 1]) -> OffsetCoord:
     """Convert a hexagon in cube coordinates to q offset coordinates."""
     if offset not in (_EVEN, _ODD):
-        raise ValueError("offset must be EVEN (+1) or ODD (-1)")
+        msg = "offset must be EVEN (+1) or ODD (-1)"
+        raise ValueError(msg)
+
     col = h.q
-    row = h.r + (h.q + offset * (h.q & 1)) // 2
+    row = h.r + (h.q + offset * (h.q & 1)) // 2  # type: ignore[operator]
     return OffsetCoord(col, row)
 
 
 def qoffset_to_cube(h: OffsetCoord, offset: Literal[-1, 1]) -> Hex:
     """Convert a hexagon in q offset coordinates to cube coordinates."""
     if offset not in (_EVEN, _ODD):
-        raise ValueError("offset must be EVEN (+1) or ODD (-1)")
+        msg = "offset must be EVEN (+1) or ODD (-1)"
+        raise ValueError(msg)
 
     q = h.col
-    r = h.row - (h.col + offset * (h.col & 1)) // 2
+    r = h.row - (h.col + offset * (h.col & 1)) // 2  # type: ignore[operator]
     s = -q - r
     return Hex(q, r, s)
 
 
 def roffset_from_cube(h: Hex, offset: Literal[-1, 1]) -> OffsetCoord:
     """Convert a hexagon in cube coordinates to r offset coordinates."""
-    col = h.q + (h.r + offset * (h.r & 1)) // 2
-    row = h.r
     if offset not in (_EVEN, _ODD):
-        raise ValueError("offset must be EVEN (+1) or ODD (-1)")
+        msg = "offset must be EVEN (+1) or ODD (-1)"
+        raise ValueError(msg)
+
+    col = h.q + (h.r + offset * (h.r & 1)) // 2  # type: ignore[operator]
+    row = h.r
     return OffsetCoord(col, row)
 
 
 def roffset_to_cube(h: OffsetCoord, offset: Literal[-1, 1]) -> Hex:
     """Convert a hexagon in r offset coordinates to cube coordinates."""
-    q = h.col - (h.row + offset * (h.row & 1)) // 2
+    if offset not in (_EVEN, _ODD):
+        msg = "offset must be EVEN (+1) or ODD (-1)"
+        raise ValueError(msg)
+
+    q = h.col - (h.row + offset * (h.row & 1)) // 2  # type: ignore[operator]
     r = h.row
     s = -q - r
-    if offset not in (_EVEN, _ODD):
-        raise ValueError("offset must be EVEN (+1) or ODD (-1)")
     return Hex(q, r, s)

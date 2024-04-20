@@ -4,10 +4,9 @@ from queue import PriorityQueue, Queue
 
 import arcade
 from sim.app import hexagon
-from sim.app.tile import Tile, create_tile
-
-from app.config import HEX_LAYOUT, MAP
-from app.tilemap import load_tilemap
+from sim.app.config import HEX_LAYOUT, MAP
+from sim.app.tile import Tile
+from sim.app.tilemap import TileMap, load_tilemap
 
 
 class HexTileMapGraph:
@@ -21,7 +20,7 @@ class HexTileMapGraph:
             edges = []
             for neighbor_hex in tile.hex.neighbors():
                 neighbor_tile = tiles.get(neighbor_hex)
-                if not neighbor_tile:
+                if not neighbor_tile or not neighbor_tile.traversable:
                     continue
                 if neighbor_tile.traversable:
                     edges.append(neighbor_tile)
@@ -34,12 +33,14 @@ class HexTileMapGraph:
 
     def cost(self, a: Tile, b: Tile) -> int:
         """Get the cost of moving from one node to another."""
+        assert b.traversal_cost is not None
         return b.traversal_cost
 
 
 def breadth_first_search(
     graph: HexTileMapGraph, start: Tile, goal: Tile | None = None
 ) -> dict[Tile, Tile | None]:
+    """Breadth-first search."""
     frontier: Queue[Tile] = Queue()
     frontier.put(start)
     came_from: dict[Tile, Tile | None] = {}
@@ -63,39 +64,13 @@ def breadth_first_search(
 class PrioritizedTile:
     """A tile with a priority."""
 
-    priority: int
+    priority: float
     tile: Tile = field(compare=False)
 
 
-def dijkstra_search(
+def a_star_search(
     graph: HexTileMapGraph, start: Tile, goal: Tile
 ) -> tuple[dict[Tile, Tile | None], dict[Tile, float]]:
-    """Dijkstra's algorithm."""
-    frontier: PriorityQueue[PrioritizedTile] = PriorityQueue()
-    frontier.put(PrioritizedTile(0, start))
-    came_from: dict[Tile, Tile | None] = {}
-    cost_so_far: dict[Tile, float] = {}
-    came_from[start] = None
-    cost_so_far[start] = 0
-
-    while not frontier.empty():
-        current: Tile = frontier.get().tile
-
-        if current == goal:
-            break
-
-        for tile in graph.neighbors(current):
-            new_cost = cost_so_far[current] + graph.cost(current, tile)
-            if tile not in cost_so_far or new_cost < cost_so_far[tile]:
-                cost_so_far[tile] = new_cost
-                priority = new_cost
-                frontier.put(PrioritizedTile(priority, tile))
-                came_from[tile] = current
-
-    return came_from, cost_so_far
-
-
-def a_star_search(graph: HexTileMapGraph, start: Tile, goal: Tile):
     """A* search."""
     frontier: PriorityQueue[PrioritizedTile] = PriorityQueue()
     frontier.put(PrioritizedTile(0, start))
@@ -122,7 +97,7 @@ def a_star_search(graph: HexTileMapGraph, start: Tile, goal: Tile):
 
 
 def reconstruct_path(
-    came_from: dict[Tile, Tile], start: Tile, goal: Tile
+    came_from: dict[Tile, Tile | None], start: Tile, goal: Tile
 ) -> list[Tile]:
     """Reconstruct the path from start to goal."""
     current: Tile = goal
@@ -131,7 +106,9 @@ def reconstruct_path(
         return []
     while current != start:
         path.append(current)
-        current = came_from[current]
+        previous = came_from[current]
+        assert previous is not None
+        current = previous
     path.append(start)  # optional
     path.reverse()  # optional
     return path
@@ -140,21 +117,21 @@ def reconstruct_path(
 class Map(arcade.Section):
     """This represents the place where the game takes place."""
 
-    def __init__(self, left: int, bottom: int, width: int, height: int, **kwargs):
+    def __init__(self, left: int, bottom: int, width: int, height: int) -> None:
         """Init."""
-        super().__init__(left, bottom, width, height, **kwargs)
+        super().__init__(left, bottom, width, height)
 
         # Variable to hold our Tiled Map
-        self.tile_map = None
+        self.tile_map: TileMap
 
         # Replacing all of our SpriteLists with a Scene variable
-        self.scene = None
+        self.scene: arcade.Scene
 
         # A variable to store our camera object
-        self.camera = None
+        self.camera: arcade.camera.Camera2D
 
         # A variable to store our gui camera object
-        self.gui_camera = None
+        self.gui_camera: arcade.camera.Camera2D
 
         self.tile_class_text = arcade.Text("", x=0, y=35)
         self.world_coordinate_text = arcade.Text("", x=0, y=20)
@@ -167,13 +144,13 @@ class Map(arcade.Section):
 
         self.mouse_pan = False
 
-        self.red_highlighted_tiles: list[Tile] = []
-        self.white_highlighted_tiles: list[Tile] = []
+        self.red_highlighted_tiles: list[hexagon.Hex] = []
+        self.white_highlighted_tiles: list[hexagon.Hex] = []
         self.updated_point = False
         self.point_a: Tile | None = None
         self.point_b: Tile | None = None
 
-    def setup(self):
+    def setup(self) -> None:
         """Set up the game here. Call this function to restart the game."""
         # Load our TileMap
         self.tile_map = load_tilemap(
@@ -185,7 +162,7 @@ class Map(arcade.Section):
         self.tiles = self.tile_map.hex_tiles
 
         # Create our Scene Based on the TileMap
-        self.scene = arcade.Scene.from_tilemap(self.tile_map)
+        self.scene = arcade.Scene.from_tilemap(self.tile_map)  # type: ignore[arg-type]
         self.graph = HexTileMapGraph(self.tiles)
 
         # Initialize our camera, setting a viewport the size of our window.
@@ -195,7 +172,7 @@ class Map(arcade.Section):
         # Initialize our gui camera, initial settings are the same as our world camera.
         self.gui_camera = arcade.camera.Camera2D()
 
-    def on_update(self, delta_time: float):
+    def on_update(self, delta_time: float) -> None:
         """Logic."""
         # if self.updated_point and self.point_a and self.point_b:
         #     self.path_highlighted_tiles = hexagon.line(
@@ -207,10 +184,10 @@ class Map(arcade.Section):
             if self.point_a and self.point_b:
                 came_from, _ = a_star_search(self.graph, self.point_a, self.point_b)
                 reached = [tile.hex for tile in came_from if tile is not None]
-                path: list[Tile] = []
 
                 path = reconstruct_path(came_from, self.point_a, self.point_b)
                 self.white_highlighted_tiles = [tile.hex for tile in path]
+                print(path)
 
             elif self.point_a:
                 # highlight all tiles that can be reached from point_a
@@ -223,7 +200,7 @@ class Map(arcade.Section):
             self.red_highlighted_tiles = reached
             self.updated_point = False
 
-    def update_coordinates_text(self, x: float, y: float):
+    def update_coordinates_text(self, x: float, y: float) -> None:
         """Update the text for the world coordinates."""
         world_x, world_y = self.camera.map_screen_to_world_coordinate(
             (x, y),
@@ -247,7 +224,7 @@ class Map(arcade.Section):
         hex_ = hexagon.pixel_to_hex(hexagon.Point(world_x, world_y), HEX_LAYOUT)
         return self.tiles[round(hex_)]
 
-    def on_draw(self):
+    def on_draw(self) -> None:
         """Render the screen."""
         # Clear the screen to the background color
         self.view.clear()
@@ -311,7 +288,9 @@ class Map(arcade.Section):
             for text_widget in self.tile_info_text_widgets:
                 text_widget.draw()
 
-    def on_mouse_press(self, x: float, y: float, button: int, key_modifiers: int):
+    def on_mouse_press(
+        self, x: float, y: float, button: int, key_modifiers: int
+    ) -> None:
         """Called when the user presses a mouse button."""
         if button == arcade.MOUSE_BUTTON_MIDDLE:
             self.mouse_pan = True
@@ -329,13 +308,13 @@ class Map(arcade.Section):
             self.updated_point = True
             return
 
-    def on_mouse_release(self, x: float, y: float, button: int, modifiers: int):
+    def on_mouse_release(self, x: float, y: float, button: int, modifiers: int) -> None:
         """Called when a user releases a mouse button."""
         if button == arcade.MOUSE_BUTTON_MIDDLE:
             self.mouse_pan = False
             return
 
-    def on_mouse_motion(self, x, y, dx, dy):
+    def on_mouse_motion(self, x: int, y: int, dx: int, dy: int) -> None:
         """Called whenever the mouse moves."""
         if self.mouse_pan:
             self.camera.position = tuple(
@@ -347,20 +326,21 @@ class Map(arcade.Section):
             )
             return
 
-    def on_mouse_scroll(self, x, y, scroll_x, scroll_y):
+    def on_mouse_scroll(self, x: int, y: int, scroll_x: int, scroll_y: int) -> None:
         """Called whenever the mouse scrolls."""
         # FIXME: zoom to mouse position
         # FIXME: zoom steps need to be more smooth
         self.camera.zoom += scroll_y * 0.1
 
-    def on_key_press(self, key, modifiers):
+    def on_key_press(self, key: int, modifiers: int) -> None:
         """Called whenever a key is pressed."""
         if key == arcade.key.ESCAPE:
-            self.close()
+            self.window.close()
 
-    def on_key_release(self, key, modifiers):
+    def on_key_release(self, key: int, modifiers: int) -> None:
         """Called whenever a key is released."""
 
-    def on_resize(self, width: int, height: int):
+    def on_resize(self, width: int, height: int) -> None:
+        """Called when the window is resized."""
         self.width = width
         self.height = height - self.view.info_bar.height

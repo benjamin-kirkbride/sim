@@ -17,6 +17,7 @@
             }
         },
         "hexagonAll_sheet.tsj": {
+            "dynamicWrapping": false,
             "scaleInDock": 1,
             "scaleInEditor": 1
         },
@@ -40,7 +41,7 @@
         "hexagonAll_sheet.tsj"
     ],
     "project": "test.tiled-project",
-    "property.type": "bool",
+    "property.type": "int",
     "recentFiles": [
         "hexagonBuildings_sheet.tsj",
         "hexagonTerrain_sheet.tsj",

@@ -1,4 +1,6 @@
-"""This module provides functionality to load in JSON map files from
+"""Generate TileMap from Tiled map files.
+
+This module provides functionality to load in JSON map files from
 the Tiled Map Editor. This is achieved using the pytiled-parser
 library.
 
@@ -10,7 +12,6 @@ from __future__ import annotations
 
 import copy
 import math
-import os
 from collections import OrderedDict
 from collections.abc import Callable
 from pathlib import Path
@@ -37,6 +38,8 @@ from sim.app.tile import Tile, create_tile
 
 if TYPE_CHECKING:
     from arcade import Texture, TextureAtlas
+
+import contextlib
 
 from arcade.math import rotate_point
 from arcade.resources import resolve
@@ -82,24 +85,23 @@ def _get_image_source(
     tile: pytiled_parser.Tile,
     map_directory: str | None,
 ) -> Path | None:
-    image_file = None
     if tile.image:
         image_file = tile.image
     elif tile.tileset.image:
         image_file = tile.tileset.image
-
-    if not image_file:
+    else:
         print(
             f"Warning for tile {tile.id}, no image source listed either for individual tile, or as a tileset."
         )
         return None
 
-    if os.path.exists(image_file):
+    if image_file.exists():
+        assert isinstance(image_file, Path)  # Why is this necessary?
         return image_file
 
     if map_directory:
         try2 = Path(map_directory, image_file)
-        if os.path.exists(try2):
+        if try2.exists():
             return try2
 
     print(f"Warning, can't find image {image_file} for tile {tile.id}")
@@ -193,7 +195,7 @@ class TileMap:
     "The background color of the map."
     scaling: float
     "A global scaling value to be applied to all Sprites in the map."
-    sprite_lists: dict[str, SpriteList]
+    sprite_lists: dict[str, SpriteList[Sprite]]
     """A dictionary mapping SpriteLists to their layer names. This is used
                     for all tile layers of the map."""
     object_lists: dict[str, list[TiledObject]]
@@ -233,16 +235,15 @@ class TileMap:
             self.tiled_map = pytiled_parser.parse_map(map_file)
 
         if self.tiled_map.infinite:
-            raise AttributeError(
+            msg = (
                 "Attempted to load an infinite TileMap. Arcade currently cannot load "
                 "infinite maps. Disable the infinite map property and re-save the file."
             )
+            raise AttributeError(msg)
 
         if not texture_atlas:
-            try:
+            with contextlib.suppress(RuntimeError):
                 texture_atlas = get_window().ctx.default_atlas
-            except RuntimeError:
-                pass
 
         self.hex_layout = hex_layout
         self.hex_tiles: dict[hexagon.Hex, Tile] = {}
@@ -262,11 +263,11 @@ class TileMap:
         self.offset = offset
 
         # Dictionaries to store the SpriteLists for processed layers
-        self.sprite_lists: dict[str, SpriteList] = OrderedDict()
+        self.sprite_lists: dict[str, SpriteList[Sprite]] = OrderedDict()
         self.object_lists: dict[str, list[TiledObject]] = OrderedDict()
         self.properties = self.tiled_map.properties
 
-        global_options = {  # type: ignore
+        global_options = {
             "scaling": self.scaling,
             "use_spatial_hash": self.use_spatial_hash,
             "hit_box_algorithm": self.hit_box_algorithm,
@@ -278,10 +279,11 @@ class TileMap:
 
         for layer in self.tiled_map.layers:
             if (layer.name in self.sprite_lists) or (layer.name in self.object_lists):
-                raise AttributeError(
+                msg = (
                     f"You have a duplicate layer name '{layer.name}' in your Tiled map. "
                     "Please use unique names for all layers and tilesets in your map."
                 )
+                raise AttributeError(msg)
             self._process_layer(layer, global_options, layer_options)
 
     def _process_layer(
@@ -290,17 +292,19 @@ class TileMap:
         global_options: dict[str, Any],
         layer_options: dict[str, dict[str, Any]] | None = None,
     ) -> None:
-        processed: SpriteList | tuple[SpriteList | None, list[TiledObject] | None]
+        processed: (
+            SpriteList[Sprite]
+            | tuple[SpriteList[Sprite] | None, list[TiledObject] | None]
+        )
 
         options = global_options
 
-        if layer_options:
-            if layer.name in layer_options:
-                new_options = {
-                    key: layer_options[layer.name].get(key, global_options[key])
-                    for key in global_options
-                }
-                options = new_options
+        if layer_options and layer.name in layer_options:
+            new_options = {
+                key: layer_options[layer.name].get(key, global_options[key])
+                for key in global_options
+            }
+            options = new_options
 
         if isinstance(layer, pytiled_parser.TileLayer):
             processed = self._process_tile_layer(layer, **options)
@@ -344,9 +348,12 @@ class TileMap:
         return x, y
 
     def get_tilemap_layer(self, layer_path: str) -> pytiled_parser.Layer | None:
+        """Get a layer from the tilemap by its path."""
         assert isinstance(layer_path, str)
 
-        def _get_tilemap_layer(my_path, layers):
+        def _get_tilemap_layer(
+            my_path: list[str], layers: list[pytiled_parser.Layer]
+        ) -> pytiled_parser.Layer | None:
             layer_name = my_path.pop(0)
             for my_layer in layers:
                 if my_layer.name == layer_name:
@@ -362,6 +369,7 @@ class TileMap:
         return layer
 
     def _get_tile_by_gid(self, tile_gid: int) -> pytiled_parser.Tile | None:
+        """Given a tile GID, return the tile object."""
         flipped_diagonally = False
         flipped_horizontally = False
         flipped_vertically = False
@@ -390,10 +398,12 @@ class TileMap:
             ):
                 tile_id = tile_gid - tileset_key
                 existing_ref = None
-                if tileset.tiles is not None:
-                    if (tile_gid - tileset_key) in tileset.tiles:
-                        existing_ref = tileset.tiles[tile_id]
-                        existing_ref.image = tileset.image
+                if (
+                    tileset.tiles is not None
+                    and (tile_gid - tileset_key) in tileset.tiles
+                ):
+                    existing_ref = tileset.tiles[tile_id]
+                    existing_ref.image = tileset.image
 
                 # No specific tile info, but there is a tile sheet
                 if existing_ref:
@@ -422,15 +432,15 @@ class TileMap:
     def _get_tile_by_id(
         self, tileset: pytiled_parser.Tileset, tile_id: int
     ) -> pytiled_parser.Tile | None:
-        for tileset_key, cur_tileset in self.tiled_map.tilesets.items():
+        for cur_tileset in self.tiled_map.tilesets.values():
             if cur_tileset is tileset:
-                for tile_key, tile in cur_tileset.tiles.items():
+                for tile in cur_tileset.tiles.values():
                     if tile_id == tile.id:
                         return tile
 
         return None
 
-    def _create_sprite_from_tile(
+    def _create_sprite_from_tile(  #
         self,
         tile: pytiled_parser.Tile,
         scaling: float = 1.0,
@@ -441,38 +451,37 @@ class TileMap:
         """Given a tile from the parser, try and create a Sprite from it."""
         # --- Step 1, Find a reference to an image this is going to be based off of
         map_source = self.tiled_map.map_file
-        map_directory = os.path.dirname(map_source)
+        map_directory = map_source.parent
         image_file = _get_image_source(tile, map_directory)
 
         if tile.animation:
             if not custom_class:
                 custom_class = TextureAnimationSprite
             elif not issubclass(custom_class, TextureAnimationSprite):
-                raise RuntimeError(
-                    f"""
+                msg = f"""
                     Tried to use a custom class {custom_class.__name__} for animated tiles
                     that doesn't subclass TextureAnimationSprite.
                     Custom classes for animated tiles must subclass TextureAnimationSprite.
                     """
-                )
+                raise RuntimeError(msg)
             args = {"path_or_texture": image_file, "scale": scaling}
-            my_sprite = custom_class(**custom_class_args, **args)  # type: ignore
+            my_sprite = custom_class(**custom_class_args, **args)  # type: ignore[arg-type]
         else:
             if not custom_class:
                 custom_class = Sprite
             elif not issubclass(custom_class, Sprite):
-                raise RuntimeError(
-                    f"""
+                msg = f"""
                     Tried to use a custom class {custom_class.__name__} for
                     a tile that doesn't subclass arcade.Sprite.
                     Custom classes for tiles must subclass arcade.Sprite.
                     """
-                )
+                raise RuntimeError(msg)
 
             # Can image_file be None?
             image_x, image_y, width, height = _get_image_info_from_tileset(tile)
+            assert image_file is not None
             texture = _load_tilemap_texture(
-                image_file,  # type: ignore
+                image_file,
                 x=image_x,
                 y=image_y,
                 width=width,
@@ -482,10 +491,10 @@ class TileMap:
             texture = _may_be_flip(tile, texture)
 
             args = {
-                "path_or_texture": texture,  # type: ignore
+                "path_or_texture": texture,  # type: ignore[dict-item]
                 "scale": scaling,
             }
-            my_sprite = custom_class(**custom_class_args, **args)  # type: ignore
+            my_sprite = custom_class(**custom_class_args, **args)  # type: ignore[assignment, arg-type]
 
         if tile.properties is not None and len(tile.properties) > 0:
             for key, value in tile.properties.items():
@@ -590,7 +599,7 @@ class TileMap:
                     points = [(point[1], point[0]) for point in points]
 
                 my_sprite.hit_box = RotatableHitBox(
-                    cast(list[Point], points),
+                    points=points,
                     position=my_sprite.position,
                     angle=my_sprite.angle,
                     scale=my_sprite.scale_xy,
@@ -627,14 +636,15 @@ class TileMap:
                             hit_box_algorithm=hit_box_algorithm,
                         )
                     else:
-                        raise RuntimeError(
+                        msg = (
                             f"Warning: failed to load image for animation frame for "
                             f"tile '{frame_tile.id}', '{image_file}'."
                         )
+                        raise RuntimeError(msg)
 
                     texture = _may_be_flip(tile, texture)
 
-                    key_frame = TextureKeyframe(  # type: ignore
+                    key_frame = TextureKeyframe(
                         texture=texture, duration=frame.duration, tile_id=frame.tile_id
                     )
                     key_frame_list.append(key_frame)
@@ -642,7 +652,7 @@ class TileMap:
                     if len(key_frame_list) == 1:
                         my_sprite.texture = key_frame.texture
 
-            cast(TextureAnimationSprite, my_sprite).animation = TextureAnimation(keyframes=key_frame_list)  # type: ignore
+            my_sprite.animation = TextureAnimation(keyframes=key_frame_list)
 
         return my_sprite
 
@@ -651,25 +661,26 @@ class TileMap:
         layer: pytiled_parser.ImageLayer,
         texture_atlas: TextureAtlas,
         scaling: float = 1.0,
-        use_spatial_hash: bool = False,
         hit_box_algorithm: HitBoxAlgorithm | None = None,
         offset: Vec2 = Vec2(0, 0),
         custom_class: type | None = None,
         custom_class_args: dict[str, Any] = {},
-    ) -> SpriteList:
-        sprite_list: SpriteList = SpriteList(
+        *,
+        use_spatial_hash: bool = False,
+    ) -> SpriteList[Sprite]:
+        sprite_list: SpriteList[Sprite] = SpriteList(
             use_spatial_hash=use_spatial_hash,
             atlas=texture_atlas,
             lazy=self._lazy,
         )
 
         map_source = self.tiled_map.map_file
-        map_directory = os.path.dirname(map_source)
+        map_directory = map_source.parent
         image_file = layer.image
 
-        if not os.path.exists(image_file) and (map_directory):
+        if not image_file.exists() and map_directory.exists():
             try2 = Path(map_directory, image_file)
-            if not os.path.exists(try2):
+            if not try2.exists():
                 print(
                     f"Warning, can't find image {image_file} for Image Layer {layer.name}"
                 )
@@ -700,13 +711,12 @@ class TileMap:
         if not custom_class:
             custom_class = Sprite
         elif not issubclass(custom_class, Sprite):
-            raise RuntimeError(
-                f"""
+            msg = f"""
                     Tried to use a custom class {custom_class.__name__} for an
                     Image Layer that doesn't subclass arcade.Sprite.
                     Custom classes for image layers must subclass arcade.Sprite.
                 """
-            )
+            raise RuntimeError(msg)
 
         args = {
             "filename": image_file,
@@ -745,13 +755,14 @@ class TileMap:
         layer: pytiled_parser.TileLayer,
         texture_atlas: TextureAtlas,
         scaling: float = 1.0,
-        use_spatial_hash: bool = False,
         hit_box_algorithm: HitBoxAlgorithm | None = None,
         offset: Vec2 = Vec2(0, 0),
         custom_class: type | None = None,
         custom_class_args: dict[str, Any] = {},
-    ) -> SpriteList:
-        sprite_list: SpriteList = SpriteList(
+        *,
+        use_spatial_hash: bool = False,
+    ) -> SpriteList[Sprite]:
+        sprite_list: SpriteList[Sprite] = SpriteList(
             use_spatial_hash=use_spatial_hash,
             atlas=texture_atlas,
             lazy=self._lazy,
@@ -775,11 +786,12 @@ class TileMap:
 
                 tile = self._get_tile_by_gid(item)
                 if tile is None:
-                    raise ValueError(
+                    msg = (
                         f"Couldn't find tile for item {item} in layer "
                         f"'{layer.name}' in file '{self.tiled_map.map_file}'"
                         f"at ({column_index}, {row_index})."
                     )
+                    raise ValueError(msg)
 
                 my_sprite = self._create_sprite_from_tile(
                     tile,
@@ -830,16 +842,19 @@ class TileMap:
         layer: pytiled_parser.ObjectLayer,
         texture_atlas: TextureAtlas,
         scaling: float = 1.0,
-        use_spatial_hash: bool = False,
         hit_box_algorithm: HitBoxAlgorithm | None = None,
         offset: Vec2 = Vec2(0, 0),
         custom_class: type | None = None,
-        custom_class_args: dict[str, Any] = {},
-    ) -> tuple[SpriteList | None, list[TiledObject] | None]:
+        custom_class_args: dict[str, Any] | None = None,
+        *,
+        use_spatial_hash: bool = False,
+    ) -> tuple[SpriteList[Sprite] | None, list[TiledObject] | None]:
+        if custom_class_args is None:
+            custom_class_args = {}
         if not scaling:
             scaling = self.scaling
 
-        sprite_list: SpriteList | None = None
+        sprite_list: SpriteList[Sprite] | None = None
         objects_list: list[TiledObject] | None = []
 
         shape: list[Point] | Rect | Point | None = None
@@ -856,7 +871,8 @@ class TileMap:
 
                 tile = self._get_tile_by_gid(cur_object.gid)
                 if tile is None:
-                    raise Exception(f"Tile with gid not found: {cur_object.gid}")
+                    msg = f"Tile with gid not found: {cur_object.gid}"
+                    raise RuntimeError(msg)
                 my_sprite = self._create_sprite_from_tile(
                     tile,
                     scaling=scaling,
@@ -1035,11 +1051,12 @@ def load_tilemap(
     hex_layout: hexagon.Layout,
     scaling: float = 1.0,
     layer_options: dict[str, dict[str, Any]] | None = None,
-    use_spatial_hash: bool = False,
     hit_box_algorithm: HitBoxAlgorithm | None = None,
     offset: Vec2 = Vec2(0, 0),
     texture_atlas: TextureAtlas | None = None,
+    *,
     lazy: bool = False,
+    use_spatial_hash: bool = False,
 ) -> TileMap:
     """Given a .json map file, loads in and returns a `TileMap` object.
 

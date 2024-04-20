@@ -1,9 +1,8 @@
 """Main module for the app."""
 
 import arcade
-
-from app.infobar import InfoBar
-from app.map import Map
+from sim.app.infobar import InfoBar
+from sim.app.map import Map
 
 # Constants
 SCREEN_WIDTH = 1920
@@ -16,7 +15,7 @@ INFO_BAR_HEIGHT = 100
 class GameView(arcade.View):
     """The game itself."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the game."""
         super().__init__()
 
@@ -36,12 +35,12 @@ class GameView(arcade.View):
         self.section_manager.add_section(self.map)
         self.map.setup()
 
-    def on_draw(self):
+    def on_draw(self) -> None:
         """Draw everything."""
         arcade.start_render()
 
 
-def _main():
+def _main() -> None:
     """Main function."""
     window = arcade.Window(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE, resizable=True)
     game = GameView()

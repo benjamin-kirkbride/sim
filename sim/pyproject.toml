@@ -9,7 +9,9 @@ requires-python = ">=3.11"
 
 
 dependencies = [
-    "arcade==3.0.0.dev26"
+    "arcade==3.0.0.dev26",
+    "faker",
+    "extended-int",
 ]
 
 [project.optional-dependencies]
@@ -49,11 +51,21 @@ convention = "google"
 
 [tool.mypy]
 python_version = "3.11"
-check_untyped_defs = true
-ignore_missing_imports = true
-warn_unused_ignores = true
-warn_redundant_casts = true
+explicit_package_bases = true
 warn_unused_configs = true
+disallow_any_generics = true
+disallow_subclassing_any = true
+disallow_untyped_calls = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_return_any = true
+no_implicit_reexport = true
+strict_equality = true
+extra_checks = true
 
 [tool.setuptools]
 packages = ["app"]

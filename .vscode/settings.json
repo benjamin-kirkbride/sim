@@ -4,7 +4,10 @@
     "Couldnt",
     "doubledcoord",
     "Fhrozen",
+    "firstgid",
     "flowtron",
+    "getdata",
+    "hitbox",
     "huggingface",
     "infobar",
     "lerp",
@@ -14,7 +17,9 @@
     "offsetcoord",
     "openai",
     "openwakeword",
+    "Polyline",
     "pretrained",
+    "putdata",
     "pydub",
     "pyglet",
     "pytiled",
@@ -26,9 +31,15 @@
     "spritelist",
     "tilemap",
     "tileset",
+    "tilesets",
+    "tilesheet",
     "tqdm",
     "vctk",
     "vits",
     "waveglow"
-  ]
+  ],
+  "mypy.enabled": true,
+  "mypy.runUsingActiveInterpreter": false,
+  "python.analysis.inlayHints.variableTypes": false,
+  "mypy.configFile": "sim/pyproject.toml"
 }
