@@ -2,9 +2,10 @@ from contextlib import nullcontext as does_not_raise
 from typing import NamedTuple
 
 import pytest
-from sim.app import util
 from hypothesis import given
 from hypothesis.strategies import text
+
+from sim import util
 
 
 class CompressMultilineStringCase(NamedTuple):
@@ -96,7 +97,7 @@ COMPRESS_MULTILINE_STRING_CASES: list[CompressMultilineStringCase] = [
 
 
 @pytest.mark.parametrize(
-    "input, output, raises",
+    ("input", "output", "raises"),
     [
         pytest.param(
             case.input,

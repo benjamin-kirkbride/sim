@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from sim.app import hexagon
+from sim import hexagon
 
 
 # @dataclass

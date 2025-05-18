@@ -34,7 +34,8 @@ from arcade import (
 from arcade.hitbox import HitBoxAlgorithm, RotatableHitBox
 from arcade.texture.loading import _load_tilemap_texture
 from pytiled_parser import Color
-from sim.app.tile import Tile, create_tile
+
+from sim.tile import Tile, create_tile
 
 if TYPE_CHECKING:
     from arcade import Texture, TextureAtlas
@@ -45,7 +46,8 @@ from arcade.math import rotate_point
 from arcade.resources import resolve
 from arcade.types import Point, Rect, TiledObject
 from pyglet.math import Vec2
-from sim.app import hexagon
+
+from sim import hexagon
 
 _FLIPPED_HORIZONTALLY_FLAG = 0x80000000
 _FLIPPED_VERTICALLY_FLAG = 0x40000000

@@ -1,4 +1,4 @@
-from sim.app.time import (
+from sim.time import (
     DAYS_PER_MONTH,
     HOURS_PER_DAY,
     MONTHS_PER_YEAR,

@@ -1,4 +1,4 @@
-from sim.app.hexagon import (
+from sim.hexagon import (
     Hex,
     Layout,
     OffsetCoord,

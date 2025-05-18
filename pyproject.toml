@@ -68,4 +68,6 @@ strict_equality = true
 extra_checks = true
 
 [tool.setuptools]
-packages = ["app"]
+
+[tool.setuptools.packages.find]
+where = ["src"]

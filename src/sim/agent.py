@@ -1,8 +1,8 @@
 from dataclasses import dataclass
 from random import randint
 
-from sim.app import hexagon, tile
-from sim.app.time import Time
+from sim import hexagon, tile
+from sim.time import Time
 
 
 @dataclass(kw_only=True)

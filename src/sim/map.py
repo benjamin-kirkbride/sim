@@ -3,10 +3,11 @@ from operator import add
 from queue import PriorityQueue, Queue
 
 import arcade
-from sim.app import hexagon
-from sim.app.config import HEX_LAYOUT, MAP
-from sim.app.tile import Tile
-from sim.app.tilemap import TileMap, load_tilemap
+
+from sim import hexagon
+from sim.config import HEX_LAYOUT, MAP
+from sim.tile import Tile
+from sim.tilemap import TileMap, load_tilemap
 
 
 class HexTileMapGraph:

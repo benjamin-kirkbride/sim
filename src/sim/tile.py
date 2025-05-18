@@ -4,11 +4,12 @@ from typing import TYPE_CHECKING
 
 import arcade
 from extended_int import int_inf
-from sim.app import hexagon
-from sim.app.time import Time
+
+from sim import hexagon
+from sim.time import Time
 
 if TYPE_CHECKING:
-    from sim.app.agent import Agent
+    from sim.agent import Agent
 
 
 @dataclass(kw_only=True)

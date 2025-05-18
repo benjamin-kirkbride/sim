@@ -1,8 +1,9 @@
 """Main module for the app."""
 
 import arcade
-from sim.app.infobar import InfoBar
-from sim.app.map import Map
+
+from sim.infobar import InfoBar
+from sim.map import Map
 
 # Constants
 SCREEN_WIDTH = 1920

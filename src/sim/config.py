@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from sim.app import hexagon
+from sim import hexagon
 
 HEX_LAYOUT = hexagon.Layout(
     hexagon.pointy_orientation, hexagon.Point(140 / 2, 140 / 2), hexagon.Point(0, 0)
